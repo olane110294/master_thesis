@@ -63,7 +63,7 @@ hello <- function(theta1, theta2, lambda) {
 test <- hello(theta1=1,theta2=2,lambda=7)
 
 
-
+# denne funksjonen fungerer ikke som den skal. Det blir produsert det samme tallet for alle observasjoner
 ola <- 1:length(bud)
 for (i in 1:length(bud)){
     ola[i] <- eq1(1, 2, 7)
