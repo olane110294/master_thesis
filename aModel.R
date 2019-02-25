@@ -7,6 +7,8 @@ library(gamlss.dist)
 library(ggplot2)
 library(ggthemes)
 library(lmtest)
+library(reshape)
+require(data.table)
 
 
 fileWin <- read.delim("win.dat", header=FALSE, stringsAsFactors = FALSE)
@@ -78,14 +80,11 @@ result_mle <- mle(minuslogl = eqThree, start=list(theta1 = 1,
                                                   theta2 = 2,
                                                   lambda = 7),
                   method="L-BFGS-B", lower=c(0,0,0),
-                  nobs = length(bud), control=list(maxit = 50))
+                  nobs = length(bud), control=list(maxit = 10))
 
+#save.image("v1Model.RData")
 
-# these results are not log transformed. 
-test <- eqThree(theta1=1,theta2=2,lambda=7)
-log(test)
-
-
+# code for plotting the estimated values after eqTwo
 ggplot() + 
     geom_line(data=win, aes(x=as.numeric(id), y=log(as.numeric(vinBud)), 
                              color="species_id")) +
@@ -93,6 +92,31 @@ ggplot() +
                                color="Species")) +
     theme_economist() + theme(legend.position="top") +  
     scale_color_discrete(name = "", labels = c("Estimated", "Observed"))
+df <- data.frame(bud=bud, deltakere=deltakere)
+ggplot(df, aes(x = bud)) + geom_density()
+
+# create a vector for densities for the observed and the estimated bids
+dEstimated <- dWEI2(bud, 1.171147, 1.783813) 
+dObserved <- approx(density(bud)[["y"]])[["y"]]
+
+# make the data ready for plotting. Go from wide to long dataset
+oDF <- data.frame(bud=as.factor(bud), estimated = dEstimated, observed=dObserved)
+oDF <- melt(oDF)
+
+# scale the variables so it is possible to plot them together
+oDT <- data.table(oDF)    
+oDT <- oDT[,scaled:= scale(value), by= "bud"]
+str(oDT)    
+
+ggplot(oDT) +
+geom_density(aes(x = scaled, color = variable)) + theme_economist() +
+scale_color_discrete(name = "", labels = c("Estimated", "Observed"))
+
+
+
+
+
+
 
 
 
