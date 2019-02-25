@@ -1,4 +1,4 @@
-setwd("C:\\Users\\ola_k\\OneDrive\\Skrivebord\\Master Thesis\\Data")
+setwd("C:\\Users\\ola_k\\OneDrive\\Skrivebord\\Master Thesis\\Git_Rcode\\master_thesis")
 
 library(tidyr)
 library(dplyr)
@@ -21,8 +21,8 @@ deltakere <- as.numeric(fileWin$N)
 kovariat <- as.numeric(fileWin$heterogenitet)
 r=0.5
 
-# f?rste fors?k p? ? lage likelihood funksjonen v?r
-eq1 <- function(theta1, theta2, lambda){
+# her er del en av likelihood funksjonen 
+eqOne <- function(i,theta1, theta2, lambda){
      # definerer to vektorer slik at R skal g? raskere. vektorN bestemmer
     # hvor mange N vi skal summe over.
         vektorN = (1:100)
@@ -49,24 +49,50 @@ eq1 <- function(theta1, theta2, lambda){
                 }
             return(loopVerdi)
             }
-    }
-
-hello <- function(theta1, theta2, lambda) {
-        ola <- 1:length(bud)
-            for (i in 1:length(bud)){
-                ola[i] <- eq1(theta1=1, theta2=2, lambda=7)
-                print(i)
-            }
-        return(ola)
         }
 
-test <- hello(theta1=1,theta2=2,lambda=7)
+# here is the second equation in our likelihood estimate.
+# these results are not log transformed. 
+eqTwo <- function(theta1, theta2, lambda) {
+        firstPart <- 1:length(bud)
+            for (i in 1:length(bud)){
+                firstPart[i] <- eqOne(i,theta1, theta2, lambda)
+               # print(i)
+            }
+        return(firstPart)
+        }
 
-
-# denne funksjonen fungerer ikke som den skal. Det blir produsert det samme tallet for alle observasjoner
-ola <- 1:length(bud)
-for (i in 1:length(bud)){
-    ola[i] <- eq1(1, 2, 7)
+# third equation which will sum all the observations and write 
+# out the final likelihood function
+eqThree <- function(theta1, theta2, lambda){
+    secondPart <- eqTwo(theta1, theta2, lambda)
+    
+    LL <- -sum(log(secondPart))
+    #print(theta1)
+    #print(theta2)
+    print(lambda)
+    return(LL)
 }
+
+result_mle <- mle(minuslogl = eqThree, start=list(theta1 = 1,
+                                                  theta2 = 2,
+                                                  lambda = 7),
+                  method="L-BFGS-B", lower=c(0,0,0),
+                  nobs = length(bud), control=list(maxit = 50))
+
+
+# these results are not log transformed. 
+test <- eqThree(theta1=1,theta2=2,lambda=7)
+log(test)
+
+
+ggplot() + 
+    geom_line(data=win, aes(x=as.numeric(id), y=log(as.numeric(vinBud)), 
+                             color="species_id")) +
+    geom_line(data=prelim, aes(x=as.numeric(id),y=-as.numeric(pre), 
+                               color="Species")) +
+    theme_economist() + theme(legend.position="top") +  
+    scale_color_discrete(name = "", labels = c("Estimated", "Observed"))
+
 
 
