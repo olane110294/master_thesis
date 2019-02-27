@@ -13,8 +13,8 @@ library(reshape)
 library(data.table)
 library(pbapply)
 
-bud <- runif(10, 1.1,1.55)
-deltakere <- round(runif(10,5,9))
+bud <- runif(1000, 1.1,1.55)
+deltakere <- round(runif(1000,5,9))
 
 foo_inner <- function(i, theta1, theta2, lambda){
     function(N){
@@ -22,7 +22,7 @@ foo_inner <- function(i, theta1, theta2, lambda){
         (N) *
         (N-1) * 
         (pWEI2(bud[i], theta1, theta2))^(N-2) *
-        # lower.tail spør om det er snakk om CDF (TRUE) eller 1-CDF (FALSE)
+        # lower.tail sp?r om det er snakk om CDF (TRUE) eller 1-CDF (FALSE)
         pWEI2(bud[i], theta1, theta2, lower.tail = FALSE) *
         dWEI2(bud[i], theta1, theta2)) /
         (1-(pWEI2(r, theta1, theta2))^N)
@@ -36,12 +36,14 @@ foo_inner <- function(i, theta1, theta2, lambda){
     return(density * ngittN * sN)
     }}
 
+foo_inner <- cmpfun(foo_inner)
+
 foo_outer <- function(theta1, theta2, lambda){
             function(i){
             listeObs <- sapply(deltakere[i]:20000, foo_inner(i, theta1, theta2, lambda))
             return(sum(listeObs))
             }}
-
+foo_outer <- cmpfun(foo_outer)
 # her er sannsynligheten for hver observasjon, gitt ukjent N
 eqThree <- function(theta1, theta2, lambda){
     secondPart <- pbsapply(1:length(bud), foo_outer(theta1, theta2, lambda))
@@ -49,7 +51,7 @@ eqThree <- function(theta1, theta2, lambda){
     LL <- -sum(log(secondPart))
     return(LL)
 }
-
+eqThree <- cmpfun(eqThree)
 result_mle <- mle(minuslogl = eqThree, start=list(theta1 = 1,
                                                   theta2 = 2,
                                                   lambda = 7),
