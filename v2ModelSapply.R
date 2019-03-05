@@ -12,50 +12,64 @@ library(lmtest)
 library(reshape)
 library(data.table)
 library(pbapply)
+library(compiler)
 
-bud <- runif(1000, 1.1,1.55)
-deltakere <- round(runif(1000,5,9))
+df_testkjoring <- data.frame(bud=round(dataset$tilslag_totalt), reservePrice=round(dataset$Minstepris), id=dataset$object_id)
+df_testkjoring$bud <- ifelse(df_testkjoring$bud<=df_testkjoring$reservePrice, NA,df_testkjoring$bud)
+df_testkjoring <- df_testkjoring[-which(is.na(df_testkjoring)),]
+
+bud <- df_testkjoring$bud[1:100]
+deltakere <- round(rpois(100,3))
+deltakere <- ifelse(deltakere>=2, deltakere,2) # fordi det er ikke lagt inn et if statement her enda
+r=df_testkjoring$reservePrice[1:100]
+
+bud <- 
 
 foo_inner <- function(i, theta1, theta2, lambda){
     function(N){
-    density = (
-        (N) *
-        (N-1) * 
-        (pWEI2(bud[i], theta1, theta2))^(N-2) *
-        # lower.tail sp?r om det er snakk om CDF (TRUE) eller 1-CDF (FALSE)
-        pWEI2(bud[i], theta1, theta2, lower.tail = FALSE) *
-        dWEI2(bud[i], theta1, theta2)) /
-        (1-(pWEI2(r, theta1, theta2))^N)
     
-    ngittN =
-        dbinom(deltakere[i], size = N, 
-               prob = pWEI2(r, theta1, theta2, lower.tail = FALSE))
-    sN = 
-        dpois(N, lambda)
+    ngittN = log(dbinom(deltakere[i], size = N, prob = pWEI2(r, theta1, theta2, lower.tail = FALSE)))
+    
+    sN = log(dpois(N, lambda))
 
-    return(density * ngittN * sN)
+    return(ngittN + sN)
     }}
-
-foo_inner <- cmpfun(foo_inner)
 
 foo_outer <- function(theta1, theta2, lambda){
             function(i){
             listeObs <- sapply(deltakere[i]:20000, foo_inner(i, theta1, theta2, lambda))
+            
+            density = 
+            log((deltakere[i])) +
+            log((deltakere[i]-1)) + 
+            log((pWEI2(bud[i], theta1, theta2)-pWEI2(r[i], theta1, theta2)))*(deltakere[i]-2) +
+            log(pWEI2(bud[i], theta1, theta2, lower.tail = FALSE)) +
+            log(dWEI2(bud[i], theta1, theta2)) -
+            log((1-pWEI2(r, theta1, theta2)))*deltakere[i]
+            
+            listeObs = listeObs + density
+            
             return(sum(listeObs))
             }}
-foo_outer <- cmpfun(foo_outer)
-# her er sannsynligheten for hver observasjon, gitt ukjent N
+
 eqThree <- function(theta1, theta2, lambda){
     secondPart <- pbsapply(1:length(bud), foo_outer(theta1, theta2, lambda))
     
     LL <- -sum(log(secondPart))
+    print(theta1)
+    print(theta2)
+    print(lambda)
     return(LL)
 }
+
+foo_inner <- cmpfun(foo_inner)
+foo_outer <- cmpfun(foo_outer)
 eqThree <- cmpfun(eqThree)
-result_mle <- mle(minuslogl = eqThree, start=list(theta1 = 1,
-                                                  theta2 = 2,
-                                                  lambda = 7),
-                  method="L-BFGS-B", lower=c(0.1,0.1,5),
+mle <- cmpfun(mle)
+result_mle <- mle(minuslogl = eqThree, start=list(theta1 = 0.1,
+                                                  theta2 = 0.2,
+                                                  lambda = 5),
+                  method="L-BFGS-B", lower=c(0.1,0.1,3), upper=c(5,0.999, 10),
                   nobs = length(bud))
 
 theta_1 <- result_mle@fullcoef[["theta1"]]
