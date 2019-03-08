@@ -49,10 +49,10 @@ r=round(df_testkjoring$reservePrice[4000:4500])/1000
 # mens funksjon(N) er det som bestemmer indikatoren for hele likning_en.
 # Siden vi ønsker å integrere likning_en over N, så setter vi inn N. 
 # Dette er vist i likning (6.1) i masteroppgaven. 
-likning_en <- function(i, theta1, theta2, lambda){
+likning_en <- function(i, scale, shape, lambda){
   function(N){
     
-    ngittN = dbinom(deltakere[i], size = N, prob = pWEI2(r[i], theta1, theta2, 
+    ngittN = dbinom(deltakere[i], size = N, prob = pWEI2(r[i], scale, shape, 
                                                          lower.tail = FALSE), 
                     log = TRUE)
     
@@ -69,21 +69,21 @@ likning_en <- function(i, theta1, theta2, lambda){
 # kalkulerte sannsynligheten for at vi observerer n gitt N.
 # legg merke til at her er funksjon(i) den som viser at i denne likningen,
 # så kommer vi til å iterere over alle i. 
-logLikelihood <- function(theta1, theta2, lambda){
+logLikelihood <- function(scale, shape, lambda){
   function(i){
-    listeObs <- sapply(deltakere[i]:20000, likning_en(i, theta1, theta2, lambda))
+    listeObs <- sapply(deltakere[i]:20000, likning_en(i, scale, shape, lambda))
     
     sum_listeObs <- sum(listeObs)           
     
-    # her regnes ut density i likning (5.2) i masteroppgaven, for hver auksjon i.
+    # her regnes ut second-order statistic i likning (5.2) i masteroppgaven, for hver auksjon i.
     secondOrderStatistic = 
       log((deltakere[i])) +
       log((deltakere[i]-1)) + 
-      log((pWEI2(bud[i], theta1, theta2)-pWEI2(r[i], theta1, theta2)))*
+      log((pWEI2(bud[i], scale, shape)-pWEI2(r[i], scale, shape)))*
       (deltakere[i]-2) +
-      log(pWEI2(bud[i], theta1, theta2, lower.tail = FALSE)) +
-      log(dWEI2(bud[i], theta1, theta2)) -
-      log((1-pWEI2(r[i], theta1, theta2)))*deltakere[i]
+      log(pWEI2(bud[i], scale, shape, lower.tail = FALSE)) +
+      log(dWEI2(bud[i], scale, shape)) -
+      log((1-pWEI2(r[i], scale, shape)))*deltakere[i]
     
     # tallene er i ln(), så derfor kan vi plusse density verdien for n i 
     # auksjon i til (20 000x1) vektoren.  
@@ -98,16 +98,17 @@ logLikelihood <- function(theta1, theta2, lambda){
 # Se likning (6.2) i masteroppgaven. Merk at det første argumentet i pbsapply
 # bestemmer hvor mange ganger vi skal iterere i. Note: pbsapply er bare en 
 # ekstra feature som gir estimert tid sapply vil bruke per iterasjon i.
-eqThree <- function(theta1, theta2, lambda){
+sum_LL <- function(scale, shape, lambda){
   # her itererer vi over alle observasjonene, og får ut en vektor med dimensjon
   # (antall observasjoner x1). 
-  secondPart <- pbsapply(1:length(bud), logLikelihood(theta1, theta2, lambda))
+  LogLikelihood_auksjon <- pbsapply(1:length(bud), logLikelihood(scale, shape, 
+                                                                 lambda))
   
   # her summer vi alle observasjonene sine log likelihood.
-  LL <- -sum(secondPart)
+  LL <- -sum(LogLikelihood_auksjon)
   
-  print(theta1)
-  print(theta2)
+  print(scale)
+  print(shape)
   print(lambda)
 
   return(LL)
@@ -119,12 +120,12 @@ mle2 <- cmpfun(mle2)
 # Endelig skal skal spille sammen. Setter startverdier som bør være i
 # ballpark av de optimale parameterne, og må bruke metoden "CG" siden 
 # vi bruker alternativ spesifisering av weibull.
-result_mle <- mle2(minuslogl = eqThree, start=list(theta1 = 0.5,
-                                                  theta2 = 2,
+result_mle <- mle2(minuslogl = sum_LL, start=list(scale = 0.5,
+                                                  shape = 2,
                                                   lambda = 3),
                   method="CG", #lower=c(9.088e-09,1.001,2), nobs = length(bud), 
-                  lower = c(theta1=9.088e-02, theta2=0.0001, lambda=1), 
-                  trace = TRUE#, upper = c(theta1=0.32, theta2=Inf, lambda=8)
+                  lower = c(scale=9.088e-02, shape=0.0001, lambda=1), 
+                  trace = TRUE#, upper = c(scale=0.32, shape=Inf, lambda=8)
                   )
 
 
@@ -133,16 +134,16 @@ result_mle <- mle2(minuslogl = eqThree, start=list(theta1 = 0.5,
   # de budene vi observerer i datasettet. For å gjøre det, definerer vi
   # en variabel som estimerer alle SOS for observasjonene, og legger det
   # inn i en dataframe.
-SoS <- function(theta1, theta2){
+SoS <- function(scale, shape){
     # her regnes ut SoS i likning (5.2) i masteroppgaven, for hver auksjon i.
     second_order_statistic = 
       log((deltakere)) +
       log((deltakere-1)) + 
-      log((pWEI2(bud, theta1, theta2)-pWEI2(r, theta1, theta2)))*
+      log((pWEI2(bud, scale, shape)-pWEI2(r, scale, shape)))*
       (deltakere-2) +
-      log(pWEI2(bud, theta1, theta2, lower.tail = FALSE)) +
-      log(dWEI2(bud, theta1, theta2)) -
-      log((1-pWEI2(r, theta1, theta2)))*deltakere
+      log(pWEI2(bud, scale, shape, lower.tail = FALSE)) +
+      log(dWEI2(bud, scale, shape)) -
+      log((1-pWEI2(r, scale, shape)))*deltakere
     
     return(second_order_statistic)
 }
