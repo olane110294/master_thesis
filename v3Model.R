@@ -71,11 +71,12 @@ likning_en <- function(i, theta1, theta2, lambda){
 # så kommer vi til å iterere over alle i. 
 logLikelihood <- function(theta1, theta2, lambda){
   function(i){
-    listeObs <- sapply(deltakere[i]:20000, likning_en(i, theta1, theta2, 
-                                                      lambda))
+    listeObs <- sapply(deltakere[i]:20000, likning_en(i, theta1, theta2, lambda))
+    
+    sum_listeObs <- sum(listeObs)           
     
     # her regnes ut density i likning (5.2) i masteroppgaven, for hver auksjon i.
-    density = 
+    secondOrderStatistic = 
       log((deltakere[i])) +
       log((deltakere[i]-1)) + 
       log((pWEI2(bud[i], theta1, theta2)-pWEI2(r[i], theta1, theta2)))*
@@ -86,9 +87,9 @@ logLikelihood <- function(theta1, theta2, lambda){
     
     # tallene er i ln(), så derfor kan vi plusse density verdien for n i 
     # auksjon i til (20 000x1) vektoren.  
-    listeObs = listeObs + density
+    logLik <- sum_listeObs + secondOrderStatistic
     
-    return(sum(listeObs))
+    return(logLik)
   }}
 
 # frem til nå har vi kalkulert log Likelihood gitt parameterne for en auksjon i.
