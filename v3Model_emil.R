@@ -44,10 +44,10 @@ df_testkjoring$bud <-
     ifelse(df_testkjoring$bud <= df_testkjoring$reservePrice,
            NA,
            df_testkjoring$bud)
-df_testkjoring <- df_testkjoring[-which(is.na(df_testkjoring)), ]
+df_testkjoring <- df_testkjoring[-which(is.na(df_testkjoring)),]
 
 df_testkjoring <-
-    df_testkjoring[order(df_testkjoring$reservePrice), ]
+    df_testkjoring[order(df_testkjoring$reservePrice),]
 
 # for å generere tall fra weibull,
 # bare kjør rWEI2(antall, parameter1, parameter2)
