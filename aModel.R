@@ -1,4 +1,4 @@
-setwd("C:\\Users\\ola_k\\OneDrive\\Skrivebord\\Master Thesis\\Git_Rcode\\master_thesis")
+ setwd("C:\\Users\\ola_k\\OneDrive\\Skrivebord\\Master Thesis\\Git_Rcode\\master_thesis")
 
 library(tidyr)
 library(dplyr)
