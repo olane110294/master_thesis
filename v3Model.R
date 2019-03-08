@@ -38,9 +38,9 @@ df_testkjoring <- df_testkjoring[order(df_testkjoring$reservePrice),]
 # her legger vi inn data til variablene vinnende bud, deltaker per auksjon(random)
 # og reserveprisen tilhørende budet som er lagt inn. Siden parameterverdiene blir
 # så lav, så skalerer vi ned dataen med 1000. Så alle tall er oppgitt i '000.
-bud <- round(df_testkjoring$bud[4000:4500])/1000
-deltakere <- round(runif(501,2,10))
-r=round(df_testkjoring$reservePrice[4000:4500])/1000
+bud <- round(df_testkjoring$bud[4000:4100])/1000
+deltakere <- round(runif(101,2,10))
+r=round(df_testkjoring$reservePrice[4000:4100])/1000
 
 # her lages den likningen av binomiale og pois, som skal integreres over alle
 # potensielle bydere, altså store N. Dette er likning (5.3) og (5.4) 
@@ -120,12 +120,13 @@ mle2 <- cmpfun(mle2)
 # Endelig skal skal spille sammen. Setter startverdier som bør være i
 # ballpark av de optimale parameterne, og må bruke metoden "CG" siden 
 # vi bruker alternativ spesifisering av weibull.
-result_mle <- mle2(minuslogl = sum_LL, start=list(scale = 0.5,
-                                                  shape = 2,
-                                                  lambda = 3),
-                  method="CG", #lower=c(9.088e-09,1.001,2), nobs = length(bud), 
-                  lower = c(scale=9.088e-02, shape=0.0001, lambda=1), 
-                  trace = TRUE#, upper = c(scale=0.32, shape=Inf, lambda=8)
+result_mle <- mle2(minuslogl = sum_LL, start=list(scale = 0.2,
+                                                  shape = 1,
+                                                  lambda = 6),
+                  method="L-BFGS-B", lower=c(0, 0, 0) #, nobs = length(bud), 
+                  #lower = c(scale=1.2e-06, shape=1.2e-06, lambda=1.2e-06), 
+                 # method="CG",
+                  #trace = TRUE #, upper = c(scale=5, shape=Inf, lambda=15)
                   )
 
 
