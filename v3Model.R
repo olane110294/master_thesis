@@ -33,12 +33,12 @@ likning_en <- function(i, scale, shape, lambda) {
       size = N,
       prob = pWEI2(r[i], scale, shape,
                    lower.tail = FALSE),
-      log = TRUE
+      log = FALSE
     )
     
-    sN = dpois(N, lambda, log = TRUE)
+    sN = dpois(N, lambda, log = FALSE)
     
-    return(ngittN + sN)
+    return(ngittN * sN)
   }
 }
 
@@ -53,27 +53,27 @@ likning_en <- function(i, scale, shape, lambda) {
 logLikelihood <- function(scale, shape, lambda) {
   function(i) {
     listeObs <-
-      sapply(deltakere[i]:100, likning_en(i, scale, shape, lambda))
+      sapply(0:100, likning_en(i, scale, shape, lambda))
     
     sum_listeObs <- sum(listeObs)
     
     # her regnes ut second-order statistic i likning (5.2) i masteroppgaven, for hver auksjon i.
     if (deltakere[i] >= 2) {
       secondOrderStatistic =
-        log((deltakere[i])) +
-        log((deltakere[i] - 1)) +
-        log((pWEI2(bud[i], scale, shape) - pWEI2(r[i], scale, shape))) *
+        ((deltakere[i])) +
+        ((deltakere[i] - 1)) +
+        ((pWEI2(bud[i], scale, shape) - pWEI2(r[i], scale, shape))) *
         (deltakere[i] - 2) +
-        log(pWEI2(bud[i], scale, shape, lower.tail = FALSE)) +
-        log(dWEI2(bud[i], scale, shape)) -
-        log((1 - pWEI2(r[i], scale, shape))) * deltakere[i]
+        (pWEI2(bud[i], scale, shape, lower.tail = FALSE)) +
+        (dWEI2(bud[i], scale, shape)) -
+        ((1 - pWEI2(r[i], scale, shape))) * deltakere[i]
     } else {
       secondOrderStatistic = 1
     }
     
     # tallene er i ln(), så derfor kan vi plusse density verdien for n i
     # auksjon i til (20 000x1) vektoren.
-    logLik <- sum_listeObs + secondOrderStatistic
+    logLik <- sum_listeObs * secondOrderStatistic
     
     return(logLik)
   }
@@ -110,9 +110,9 @@ mle2 <- cmpfun(mle2)
 result_mle <- mle2(
   minuslogl = sum_LL,
   start = list(
-    scale = 1,
-    shape = 2,
-    lambda = 5
+    scale = 1.2,
+    shape = 1.9,
+    lambda = 5.5
   ),
   method = "L-BFGS-B",
   lower = c(0.1, 0.1, 0.1),
