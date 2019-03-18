@@ -12,6 +12,7 @@ packages <- c(
     "compiler",
     "bbmle"
 )
+
 install.packages(packages)
 library(readxl)
 library(tidyr)
@@ -57,14 +58,14 @@ deltakere <- round(rpois(101, 3))
 deltakere <- ifelse(deltakere >= 2, deltakere, 2)
 r = round(df_testkjoring$reservePrice[4000:4100]) / 1000
 
-foo_inner <- function(i, theta1, theta2, lambda) {
+foo_inner <- function(i, scale, shape, lambda) {
     function(N) {
         ngittN = dbinom(
             deltakere[i],
             size = N,
             prob = pWEI2(r[i],
-                         theta1,
-                         theta2,
+                         scale,
+                         shape,
                          lower.tail = FALSE),
             log = TRUE
         )
@@ -79,31 +80,31 @@ foo_inner <- function(i, theta1, theta2, lambda) {
 
 #foo_inner <- memoise(foo_inner)
 
-foo_outer <- function(theta1, theta2, lambda) {
+foo_outer <- function(scale, shape, lambda) {
     function(i) {
         listeObs <- sapply(deltakere[i]:20000,
                            foo_inner(i,
-                                     theta1,
-                                     theta2,
+                                     scale,
+                                     shape,
                                      lambda))
         
         density =
             log((deltakere[i])) +
             log((deltakere[i] - 1)) +
             log((pWEI2(bud[i],
-                       theta1,
-                       theta2) - pWEI2(r[i],
-                                       theta1,
-                                       theta2))) * (deltakere[i] - 2) +
+                       scale,
+                       shape) - pWEI2(r[i],
+                                       scale,
+                                       shape))) * (deltakere[i] - 2) +
             log(pWEI2(bud[i],
-                      theta1,
-                      theta2,
+                      scale,
+                      shape,
                       lower.tail = FALSE)) +
             log(dWEI2(bud[i],
-                      theta1,
-                      theta2)) -
+                      scale,
+                      shape)) -
             log((1 - pWEI2(r[i],
-                           theta1, theta2))) * deltakere[i]
+                           scale, shape))) * deltakere[i]
         
         listeObs = listeObs + density
         
@@ -112,15 +113,15 @@ foo_outer <- function(theta1, theta2, lambda) {
 }
 
 #foo_outer <- memoise(foo_outer)
-eqThree <- function(theta1, theta2, lambda) {
+eqThree <- function(scale, shape, lambda) {
     secondPart <- pbsapply(1:length(bud),
-                           foo_outer(theta1,
-                                     theta2,
+                           foo_outer(scale,
+                                     shape,
                                      lambda))
     
     LL <- -sum(secondPart)
-    print(theta1)
-    print(theta2)
+    print(scale)
+    print(shape)
     print(lambda)
     
     return(LL)
@@ -130,16 +131,16 @@ mle2 <- cmpfun(mle2)
 result_mle <- mle2(
     minuslogl = eqThree,
     start = list(
-        theta1 = 5,
-        theta2 = 1,
+        scale = 5,
+        shape = 1,
         lambda = 3
     ),
-    method = "L-BFGS-B",
+    method = "CG",
     #lower=c(9.088e-09,1.001,2), nobs = length(bud),
-    lower = c(
-        theta1 = 0.000001,
-        theta2 = 0.000001,
-        lambda = 1
-    ),
-    trace = TRUE#, upper = c(theta1=0.32, theta2=Inf, lambda=8)
+    #lower = c(
+        #scale = 0,
+        #shape = 0,
+        #lambda = 1
+    #),
+    trace = TRUE#, upper = c(scale=0.32, shape=Inf, lambda=8)
 )

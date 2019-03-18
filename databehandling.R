@@ -10,6 +10,12 @@ colnames(dataset)[19]="vBud"
 colnames(dataset)[16]="tilslag_flaske"
 colnames(dataset)[15]="tilslag_totalt"
 colnames(dataset)[12]="verdi_flaske"
+
+# finner datasett som skal brukes. Husk å fjern funky biz
+red_wine <- dataset[grep("Rødvin", dataset$Produkttype),]
+red_wine <- 
+
+
 # henter liste alle kjøperne
 unikeKjopere_list <- split(dataset,dataset$vBud)
 # teller hvor mange auksjoner de har kjøpt flasker på

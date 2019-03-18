@@ -5,7 +5,7 @@ library(gamlss.dist)
 library(ggplot2)
 library(ggthemes)
 library(lmtest)
-library(reshape)
+library(rescale)
 library(data.table)
 library(pbapply)
 library(compiler)
@@ -19,6 +19,14 @@ colnames(dataset)[16] = "tilslag_flaske"
 colnames(dataset)[15] = "tilslag_totalt"
 colnames(dataset)[12] = "verdi_flaske"
 
+#### Testing av Mortens data ####
+
+bud = as.numeric(simulert_data$winbid)
+r = as.numeric(simulert_data$rprice)
+deltakere = as.numeric(simulert_data$nobs)
+
+#####
+
 # her lages den likningen av binomiale og pois, som skal integreres over alle
 # potensielle bydere, altså store N. Dette er likning (5.3) og (5.4)
 # i masteroppgaven på side 15.
@@ -26,12 +34,12 @@ colnames(dataset)[12] = "verdi_flaske"
 # mens funksjon(N) er det som bestemmer indikatoren for hele likning_en.
 # Siden vi ønsker å integrere likning_en over N, så setter vi inn N.
 # Dette er vist i likning (6.1) i masteroppgaven.
-likning_en <- function(i, scale, shape, lambda) {
+likning_en <- function(i, shape, scale, lambda) {
   function(N) {
     ngittN = dbinom(
       deltakere[i],
       size = N,
-      prob = pWEI2(r[i], scale, shape,
+      prob = pweibull(r[i], shape, scale,
                    lower.tail = FALSE),
       log = FALSE
     )
@@ -50,10 +58,10 @@ likning_en <- function(i, scale, shape, lambda) {
 # kalkulerte sannsynligheten for at vi observerer n gitt N.
 # legg merke til at her er funksjon(i) den som viser at i denne likningen,
 # så kommer vi til å iterere over alle i.
-logLikelihood <- function(scale, shape, lambda) {
+logLikelihood <- function(shape, scale, lambda) {
   function(i) {
     listeObs <-
-      sapply(0:100, likning_en(i, scale, shape, lambda))
+      sapply(0:50, likning_en(i, shape, scale, lambda))
     
     sum_listeObs <- sum(listeObs)
     
@@ -62,11 +70,11 @@ logLikelihood <- function(scale, shape, lambda) {
       secondOrderStatistic =
         ((deltakere[i])) +
         ((deltakere[i] - 1)) +
-        ((pWEI2(bud[i], scale, shape) - pWEI2(r[i], scale, shape))) *
+        ((pweibull(bud[i], shape, scale) - pweibull(r[i], shape, scale))) *
         (deltakere[i] - 2) +
-        (pWEI2(bud[i], scale, shape, lower.tail = FALSE)) +
-        (dWEI2(bud[i], scale, shape)) -
-        ((1 - pWEI2(r[i], scale, shape))) * deltakere[i]
+        (pweibull(bud[i], shape, scale, lower.tail = FALSE)) +
+        (dweibull(bud[i], shape, scale)) -
+        ((1 - pweibull(r[i], shape, scale))) * deltakere[i]
     } else {
       secondOrderStatistic = 1
     }
@@ -84,18 +92,18 @@ logLikelihood <- function(scale, shape, lambda) {
 # Se likning (6.2) i masteroppgaven. Merk at det første argumentet i pbsapply
 # bestemmer hvor mange ganger vi skal iterere i. Note: pbsapply er bare en
 # ekstra feature som gir estimert tid sapply vil bruke per iterasjon i.
-sum_LL <- function(scale, shape, lambda) {
+sum_LL <- function(shape, scale, lambda) {
   # her itererer vi over alle observasjonene, og får ut en vektor med dimensjon
   # (antall observasjoner x1).
   LogLikelihood_auksjon <-
-    pbsapply(1:length(bud), logLikelihood(scale, shape,
+    pbsapply(1:length(bud), logLikelihood(shape, scale,
                                           lambda))
   
   # her summer vi alle observasjonene sine log likelihood.
   LL <- -sum(LogLikelihood_auksjon)
   
-  print(scale)
   print(shape)
+  print(scale)
   print(lambda)
   
   return(LL)
@@ -110,16 +118,16 @@ mle2 <- cmpfun(mle2)
 result_mle <- mle2(
   minuslogl = sum_LL,
   start = list(
-    scale = 1.2,
-    shape = 1.9,
-    lambda = 5.5
+    shape = 1.5,
+    scale = 3,
+    lambda = 5
   ),
   method = "L-BFGS-B",
   lower = c(0.1, 0.1, 0.1),
   #, upper=c(5,5,10) #, nobs = length(bud),
-  #lower = c(scale=1.2e-06, shape=1.2e-06, lambda=1.2e-06),
+  #lower = c(shape=1.2e-06, scale=1.2e-06, lambda=1.2e-06),
   # method="CG",
-  trace = TRUE #, upper = c(scale=5, shape=Inf, lambda=15)
+  trace = TRUE #, upper = c(shape=5, scale=Inf, lambda=15)
 )
 
 
@@ -128,16 +136,16 @@ result_mle <- mle2(
 # de budene vi observerer i datasettet. For å gjøre det, definerer vi
 # en variabel som estimerer alle SOS for observasjonene, og legger det
 # inn i en dataframe.
-SoS <- function(scale, shape) {
+SoS <- function(shape, scale) {
   # her regnes ut SoS i likning (5.2) i masteroppgaven, for hver auksjon i.
   second_order_statistic =
     log((deltakere)) +
     log((deltakere - 1)) +
-    log((pWEI2(bud, scale, shape) - pWEI2(r, scale, shape))) *
+    log((pweibull(bud, shape, scale) - pweibull(r, shape, scale))) *
     (deltakere - 2) +
-    log(pWEI2(bud, scale, shape, lower.tail = FALSE)) +
-    log(dWEI2(bud, scale, shape)) -
-    log((1 - pWEI2(r, scale, shape))) * deltakere
+    log(pweibull(bud, shape, scale, lower.tail = FALSE)) +
+    log(dweibull(bud, shape, scale)) -
+    log((1 - pweibull(r, shape, scale))) * deltakere
   
   return(second_order_statistic)
 }
